@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Detection Publisher</title>
+</head>
+<body>
+    <h1>Face Detection Publisher</h1>
+    <p>This is where your face detection functionality will be displayed.</p>
+
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+
+    <script>
+        // Get the video element
+        const video = document.getElementById('video');
+
+        // Get the canvas element
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        // Load the face detection classifier
+        const faceCascade = new cv.CascadeClassifier();
+        faceCascade.load('haarcascade_frontalface_default.xml');
+
+        // Start the video stream from the webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                video.srcObject = stream;
+            })
+            .catch(function(error) {
+                console.error('Error accessing the webcam: ', error);
+            });
+
+        // Detect faces in the video stream
+        function detectFaces() {
+            // Capture a frame from the video stream
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+
+            // Convert the frame to grayscale
+            const gray = new cv.Mat();
+            cv.cvtColor(frame, gray, cv.COLOR_RGBA2GRAY);
+
+            // Detect faces in the grayscale frame
+            const faces = new cv.RectVector();
+            faceCascade.detectMultiScale(gray, faces);
+
+            // Draw rectangles around the detected faces
+            for (let i = 0; i < faces.size(); i++) {
+                const faceRect = faces.get(i);
+                const point1 = new cv.Point(faceRect.x, faceRect.y);
+                const point2 = new cv.Point(faceRect.x + faceRect.width, faceRect.y + faceRect.height);
+                cv.rectangle(frame, point1, point2, [255, 0, 0, 255]);
+            }
+
+            // Display the frame with face rectangles
+            context.putImageData(frame, 0, 0);
+
+            // Free up memory
+            gray.delete();
+            faces.delete();
+        }
+
+        // Call the detectFaces function periodically to continuously detect faces
+        setInterval(detectFaces, 100);
+
+        // OpenCV.js is loaded asynchronously, so we need to wait for it to be ready
+        cv['onRuntimeInitialized'] = function() {
+            console.log('OpenCV.js is ready');
+        };
+    </script>
+    <script async src="opencv.js" onload="console.log('OpenCV.js loaded');"></script>
+</body>
+</html>
